@@ -7,8 +7,8 @@ clearance = 0.1;
 // --- Dimensions ---
 prism_height = 250;  // mm (25cm)
 prism_width = 20;    // mm (1cm) W-E
-prism_length = 20;   // mm (1cm) N-S
-prism_cut_width = 10; // mm (1cm) N-W
+prism_length = 10;   // mm (1cm) N-S
+prism_cut_width = 8; // mm (1cm) N-W
 
 // --- Screw Hole Parameters ---
 screw_type = "M3";   // "M2" or "M3"
@@ -22,37 +22,41 @@ m3_diameter = 3.2;
 screw_diameter = (screw_type == "M2") ? m2_diameter : m3_diameter;
 screw_cone_depth = 2;  // mm
 
+// --- N-side Screw Hole Heights and offsets from center (mm) ---
+n_screw_heights = [25, 75, 125, 175, 225];  // mm
+n_screw_offset = 2.5;  // N-side
+
+// --- S-side Screw Hole Heights and offsets from center (mm) ---
+s_screw_heights = [];  // mm
+s_screw_offset = 0;  // S-side
+
+// --- W-side Screw Hole Heights and offsets from center (mm) ---
+w_screw_heights = [];  // mm
+w_screw_offset = 0;  // W-side
+
+// --- E-side Screw Hole Heights and offsets from center (mm) ---
+e_screw_heights = [];  // mm
+e_screw_offset = 0;  // E-side
+
 // --- Magnet Hole Parameters ---
 magnet_diameter = 5;   // mm
 magnet_height = 3;     // mm
 
-// --- N-side Screw Hole Heights ---
-n_screw_heights = [25, 75, 125, 175, 225];  // mm
+// --- N-side Magnet Hole Heights and offsets from center (mm) ---
+n_magnet_heights = [];  // mm
+n_magnet_offset = 0;  // N-side
 
-// --- S-side Screw Hole Heights ---
-s_screw_heights = [];  // mm
+// --- S-side Magnet Hole Heights and offsets from center (mm) ---
+s_magnet_heights = [];  // mm
+s_magnet_offset = 0;  // S-side
 
-// --- W-side Screw Hole Heights ---
-w_screw_heights = [50, 100, 150, 200];  // mm
+// --- E-side Magnet Hole Heights and offsets from center (mm) ---
+e_magnet_heights = [35, 215];  // mm
+e_magnet_offset = 0;  // E-side
 
-// --- E-side Screw Hole Heights ---
-e_screw_heights = [];  // mm
-
-// --- N-side Magnet Hole Heights ---
-n_magnet_heights = [35, 215];  // mm
-
-// --- S-side Magnet Hole Heights ---
-s_magnet_heights = [45];  // mm
-
-// --- E-side Magnet Hole Heights ---
-e_magnet_heights = [35];  // mm
-
-// --- E-side Magnet Hole Heights ---
-w_magnet_heights = [45];  // mm
-
-// --- Offsets from center ---
-screw_offset = 5;    // mm
-magnet_offset = 0;   // mm
+// --- E-side Magnet Hole Heights and offsets from center (mm) ---
+w_magnet_heights = [];  // mm
+w_magnet_offset = 0;  // W-side
 
 // ============================================
 // Main Assembly
@@ -64,42 +68,42 @@ difference() {
     
     // N-side screw holes
     for (h = n_screw_heights) {
-        screw_hole_n(h, screw_offset);
+        screw_hole_n(h, n_screw_offset);
     }
-    
+
     // S-side screw holes
     for (h = s_screw_heights) {
-        screw_hole_s(h, screw_offset);
+        screw_hole_s(h, s_screw_offset);
     }
-    
+
     // W-side screw holes
     for (h = w_screw_heights) {
-        screw_hole_w(h, screw_offset);
+        screw_hole_w(h, w_screw_offset);
     }
-    
+
     // E-side screw holes
     for (h = e_screw_heights) {
-        screw_hole_e(h, screw_offset);
+        screw_hole_e(h, e_screw_offset);
     }
     
     // N-side magnet holes
     for (h = n_magnet_heights) {
-        magnet_hole_n(h, magnet_offset);
+        magnet_hole_n(h, n_magnet_offset);
     }
-    
+
     // S-side magnet holes
     for (h = s_magnet_heights) {
-        magnet_hole_s(h, magnet_offset);
+        magnet_hole_s(h, s_magnet_offset);
     }
-    
+
     // E-side magnet holes
     for (h = e_magnet_heights) {
-        magnet_hole_e(h, magnet_offset);
+        magnet_hole_e(h, e_magnet_offset);
     }
 
     // W-side magnet holes
     for (h = w_magnet_heights) {
-        magnet_hole_w(h, magnet_offset);
+        magnet_hole_w(h, w_magnet_offset);
     }
 }
 
