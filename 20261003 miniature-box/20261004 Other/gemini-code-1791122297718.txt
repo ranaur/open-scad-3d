@@ -1,0 +1,136 @@
+// ================================================
+// PARAMETERS (Resin / SLA Screw Thread)
+// ================================================
+
+$fn = 120; // High resolution for smooth threads
+
+// Base Parameters
+base_diameter  = 25;   // Base outer cylinder diameter (2.5 cm)
+base_height    = 15;   // Base total height
+thread_height  = 8;    // Height of the threaded top section
+base_wall      = 2;    // Wall thickness (0 for solid base)
+
+// Thread Profile Parameters
+thread_pitch   = 2.0;  // Vertical distance per full rotation (2mm pitch)
+thread_angle   = 60;   // ISO standard 60-degree V-thread angle
+
+// Outer Ring Parameters
+ring_wall_add  = 3;    // Ring wall addition (3mm total per side)
+ring_height    = 12;   // Ring total height
+knurl_count    = 24;   // Outer grip ridges count
+knurl_depth    = 0.6;  // Outer grip ridges depth (mm)
+
+// SLA Print Tolerance
+clearance      = 0.15; // Radial clearance gap (0.12 - 0.15mm ideal for resin threads)
+
+// Derived Variables
+base_radius       = base_diameter / 2;
+ring_inner_radius = base_radius + clearance;
+ring_outer_radius = ring_inner_radius + ring_wall_add;
+
+// ================================================
+// DISPLAY LAYOUT
+// ================================================
+
+translate([-base_radius - 6, 0, 0]) base_with_male_thread();
+translate([ring_outer_radius + 6, 0, 0]) ring_with_female_thread();
+
+// ================================================
+// MODULES
+// ================================================
+
+// Base with external (male) continuous thread
+module base_with_male_thread() {
+    difference() {
+        union() {
+            // Main lower body
+            cylinder(h = base_height - thread_height, r = base_radius);
+            
+            // Threaded upper section
+            translate([0, 0, base_height - thread_height])
+                screw_thread(
+                    r = base_radius, 
+                    h = thread_height, 
+                    pitch = thread_pitch, 
+                    internal = false, 
+                    clearance = 0
+                );
+        }
+        
+        // Internal hollow cavity (if specified)
+        if (base_wall > 0) {
+            translate([0, 0, base_wall])
+                cylinder(h = base_height + 1, r = base_radius - base_wall);
+        }
+    }
+}
+
+// Ring with internal (female) continuous thread
+module ring_with_female_thread() {
+    difference() {
+        union() {
+            // Outer knurled shell
+            cylinder(h = ring_height, r = ring_outer_radius);
+            
+            // Exterior grip ridges
+            for (i = [0 : knurl_count - 1]) {
+                rotate([0, 0, i * (360 / knurl_count)])
+                    translate([ring_outer_radius, 0, 0])
+                        cylinder(h = ring_height, r = knurl_depth, $fn = 16);
+            }
+        }
+        
+        // Inner threaded bore cut (applies clearance factor)
+        translate([0, 0, -0.1])
+            screw_thread(
+                r = ring_inner_radius, 
+                h = ring_height + 0.2, 
+                pitch = thread_pitch, 
+                internal = true, 
+                clearance = clearance
+            );
+            
+        // Lead-in chamfer at entry to make threading start easily
+        translate([0, 0, -0.1])
+            cylinder(h = 1.2, r1 = ring_inner_radius + 0.8, r2 = ring_inner_radius);
+    }
+}
+
+// ================================================
+// HELICAL THREAD GENERATOR ENGINE
+// ================================================
+
+module screw_thread(r, h, pitch, internal = false, clearance = 0) {
+    depth = (pitch / 2) * tan(thread_angle / 2);
+    effective_r = internal ? (r + clearance) : r;
+    turns = h / pitch;
+    slices = floor(turns * 36); // Smoothness along helix
+    
+    polyhedron(
+        points = [
+            for (i = [0 : slices]) 
+                let (
+                    a = i * (360 / 36),
+                    z = i * (h / slices),
+                    // Taper top and bottom turns slightly to avoid harsh thread starts
+                    taper = (z < pitch) ? (z / pitch) : ((z > h - pitch) ? ((h - z) / pitch) : 1),
+                    r_out = internal ? effective_r + (depth * taper) : effective_r,
+                    r_in  = internal ? effective_r : effective_r - (depth * taper)
+                )
+                each [
+                    [ (r_in)  * cos(a), (r_in)  * sin(a), z ],
+                    [ (r_out) * cos(a), (r_out) * sin(a), z + pitch/2 ]
+                ]
+        ],
+        faces = [
+            for (i = [0 : slices - 1])
+                let (b = i * 2)
+                each [
+                    [b, b+1, b+3],
+                    [b, b+3, b+2],
+                    [b+1, b, b+2],
+                    [b+1, b+2, b+3]
+                ]
+        ]
+    );
+}

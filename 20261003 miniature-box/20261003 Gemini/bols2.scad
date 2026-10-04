@@ -4,11 +4,11 @@ include <BOSL2/masks.scad>
 
 // --- CUSTOMIZATION PARAMETERS ---
 $fn = 64;                 // Smoothness of circles
-box_outer_d = 25;         // Outer diameter of the box (miniature)
-box_height = 30;          // Total internal depth/height of the base
-wall_thickness = 2;       // Side wall thickness
+box_outer_d = 30;         // Outer diameter of the box (miniature)
+box_height = 45;          // Total internal depth/height of the base
+wall_thickness = 3;       // Side wall thickness
 
-thread_d = 21;            // Outer diameter of the thread (must clear wall thickness)
+thread_d = box_outer_d - 2 * wall_thickness;            // Outer diameter of the thread (must clear wall thickness)
 thread_pitch = 1.5;       // Pitch in mm (1.5mm is great for miniature resin boxes)
 thread_h = 6;             // Height of the threaded section
 
@@ -20,11 +20,17 @@ ridge_depth = 0.6;        // How deep the grip grooves cut into the walls
 // $slop adds radial clearance to internal (female) threads automatically.
 // For resin printing, a total clearance of 0.2mm to 0.4mm works best.
 // BOSL2 scales internal threads by (4 * $slop), so $slop = 0.075 gives a ~0.3mm total gap.
-$slop = 0.075;            
+$slop = 0.075;
+
+// CENTRAL HOLE SETTINGS
+central_hole_d = 5;          // Diameter of the central hole in the lid
+central_hole_depth = 3;       // Depth of the central hole
+inner_hole_d = 1;             // Diameter of the inner hole (inside the central hole)
+inner_hole_depth = 1;         // Depth of the inner hole            
 
 // --- RENDERING CONTROL ---
 // Toggle between viewing the "base", "lid", or "both"
-render_mode = "both"; 
+render_mode = "base"; 
 
 if (render_mode == "base" || render_mode == "both") {
     color("LightBlue") box_base();
@@ -33,7 +39,8 @@ if (render_mode == "base" || render_mode == "both") {
 if (render_mode == "lid" || render_mode == "both") {
     // Lift the lid up in "both" view to inspect the threads
     translate([0, 0, (render_mode == "both") ? box_height + 15 : 0]) 
-        color("Tomato") box_lid();
+        color("Tomato")
+        box_lid();
 }
 
 // --- MODULES ---
@@ -66,10 +73,20 @@ module box_lid() {
         // Vertical grip ridges cut into the lid cap outer wall
         grip_ridges(h=lid_cap_h);
     }
-    
-    // Male Thread protruding down from the lid cap
-    translate([0, 0, lid_cap_h])
-        threaded_rod(d=thread_d, pitch=thread_pitch, l=thread_h, internal=false, anchor=BOTTOM);
+
+    difference() {
+        // Male Thread protruding down from the lid cap
+        translate([0, 0, lid_cap_h])
+            threaded_rod(d=thread_d, pitch=thread_pitch, l=thread_h, internal=false, anchor=BOTTOM);
+        
+        // Central hole (5mm diameter, 3mm deep) on the external top
+        translate([0, 0, lid_cap_h + thread_h + 0.1])
+            cylinder(d=central_hole_d, h=central_hole_depth + 0.1, anchor=TOP);
+        
+        // Inner hole (1mm diameter, 1mm deeper inside the central hole)
+        translate([0, 0, lid_cap_h + thread_h - central_hole_depth])
+            cylinder(d=inner_hole_d, h=inner_hole_depth + 0.1, anchor=TOP);
+    }
 }
 
 // Helper module to generate even spacing for grip cuts

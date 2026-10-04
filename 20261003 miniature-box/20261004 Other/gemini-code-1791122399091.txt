@@ -1,0 +1,165 @@
+// ================================================
+// PARAMETERS (Resin SLA - Multi-Start Square Thread)
+// ================================================
+
+$fn = 120; // High circular resolution
+
+// Base Parameters
+base_diameter  = 25;   // Base thread cylinder diameter (2.5 cm)
+base_height    = 18;   // Base total height
+thread_height  = 10;   // Height of the threaded top section
+base_wall      = 2;    // Wall thickness for hollow core (0 for solid)
+
+// Stopper Ridge Parameters
+stopper_dia    = 33;   // Stopper ridge diameter (larger than ring's outer diameter)
+stopper_height = 3;    // Height/thickness of bottom flange
+
+// Multi-Start Square Thread Parameters
+starts         = 2;    // Number of intertwined thread helices (2-start thread)
+pitch          = 2.0;  // Axial distance between adjacent teeth (2mm profile)
+lead           = pitch * starts; // Linear advance per rotation (4mm/turn = fast close)
+thread_depth   = 0.9;  // Radial depth of thread teeth (mm)
+
+// Outer Ring Parameters
+ring_wall_add  = 3;    // Ring wall thickness addition (3mm per side)
+ring_height    = 10;   // Height of threaded outer ring
+knurl_count    = 24;   // Outer grip ridges count
+knurl_depth    = 0.6;  // Outer grip ridges depth (mm)
+
+// SLA Print Tolerance
+clearance      = 0.15; // Radial clearance gap (0.12 - 0.15mm ideal for resin)
+
+// Derived Variables
+base_radius       = base_diameter / 2;
+ring_inner_radius = base_radius + clearance;
+ring_outer_radius = ring_inner_radius + ring_wall_add;
+
+// ================================================
+// DISPLAY LAYOUT
+// ================================================
+
+translate([-stopper_dia/2 - 5, 0, 0]) base_with_multi_start_thread();
+translate([stopper_dia/2 + 5, 0, 0]) ring_with_female_multi_start_thread();
+
+// ================================================
+// MODULES
+// ================================================
+
+// Base cylinder with bottom stopper ridge and 2-start male thread
+module base_with_multi_start_thread() {
+    difference() {
+        union() {
+            // 1. Bottom Stopper Ridge / Flange
+            cylinder(h = stopper_height, r = stopper_dia / 2);
+            
+            // 2. Main Lower Body (smooth neck)
+            translate([0, 0, stopper_height])
+                cylinder(h = base_height - thread_height - stopper_height, r = base_radius);
+            
+            // 3. Multi-Start Male Thread Upper Section
+            translate([0, 0, base_height - thread_height])
+                multi_start_square_thread(
+                    r = base_radius, 
+                    h = thread_height, 
+                    p = pitch, 
+                    num_starts = starts,
+                    depth = thread_depth,
+                    internal = false, 
+                    clearance = 0
+                );
+        }
+        
+        // Internal hollow cavity (if enabled)
+        if (base_wall > 0) {
+            translate([0, 0, base_wall])
+                cylinder(h = base_height + 1, r = base_radius - base_wall);
+        }
+    }
+}
+
+// Outer ring with matching 2-start female thread
+module ring_with_female_multi_start_thread() {
+    difference() {
+        union() {
+            // Outer ring shell body
+            cylinder(h = ring_height, r = ring_outer_radius);
+            
+            // Exterior grip ridges (knurling)
+            for (i = [0 : knurl_count - 1]) {
+                rotate([0, 0, i * (360 / knurl_count)])
+                    translate([ring_outer_radius, 0, 0])
+                        cylinder(h = ring_height, r = knurl_depth, $fn = 16);
+            }
+        }
+        
+        // Internal Female Multi-Start Square Thread Bore
+        translate([0, 0, -0.1])
+            multi_start_square_thread(
+                r = ring_inner_radius, 
+                h = ring_height + 0.2, 
+                p = pitch, 
+                num_starts = starts,
+                depth = thread_depth,
+                internal = true, 
+                clearance = clearance
+            );
+            
+        // Lead-in chamfer at bottom entry for instant alignment
+        translate([0, 0, -0.1])
+            cylinder(h = 1.2, r1 = ring_inner_radius + thread_depth + 0.5, r2 = ring_inner_radius);
+    }
+}
+
+// ================================================
+// MULTI-START HELICAL THREAD GENERATOR
+// ================================================
+
+module multi_start_square_thread(r, h, p, num_starts, depth, internal = false, clearance = 0) {
+    l = p * num_starts; // Lead calculation
+    
+    // Combine multiple independent threads rotated symmetrically around the center axis
+    for (s = [0 : num_starts - 1]) {
+        rotate([0, 0, s * (360 / num_starts)]) {
+            single_square_helix(r = r, h = h, p = p, l = l, depth = depth, internal = internal, clearance = clearance);
+        }
+    }
+}
+
+module single_square_helix(r, h, p, l, depth, internal, clearance) {
+    effective_r = internal ? (r + clearance) : r;
+    turns = h / l;
+    slices = floor(turns * 36); // Helical steps
+    
+    polyhedron(
+        points = [
+            for (i = [0 : slices]) 
+                let (
+                    a = i * (360 / 36),
+                    z = i * (h / slices),
+                    
+                    // Smooth taper over the first and last full lead to eliminate print overhangs
+                    taper = (z < l) ? (z / l) : ((z > h - l) ? ((h - z) / l) : 1),
+                    current_depth = depth * taper,
+                    
+                    r_inner = internal ? effective_r : effective_r - current_depth,
+                    r_outer = internal ? effective_r + current_depth : effective_r
+                )
+                each [
+                    [ r_inner * cos(a), r_inner * sin(a), z ],
+                    [ r_outer * cos(a), r_outer * sin(a), z ],
+                    [ r_inner * cos(a), r_inner * sin(a), z + p/2 ],
+                    [ r_outer * cos(a), r_outer * sin(a), z + p/2 ]
+                ]
+        ],
+        faces = [
+            for (i = [0 : slices - 1])
+                let (b = i * 4)
+                each [
+                    [b,   b+1, b+5, b+4],
+                    [b+1, b+3, b+7, b+5],
+                    [b+3, b+2, b+6, b+7],
+                    [b+2, b,   b+4, b+6]
+                ]
+        ]
+    );
+}
