@@ -3,20 +3,33 @@
 // ============================================
 
 /* [Bar Dimensions (mm)] */
-base_length = 80;
-base_width  = 40;
+base_length = 40;
+base_width  = 20;
 top_length  = base_length * 0.9;
 top_width   = base_width * 0.8;
-height      = 20;
+height      = 10;
 edge_radius = 2; // Controls the roundness of all edges (top, bottom, and sides)
 
 /* [Stamp Settings] */
-stamp_mode  = "engraved"; // ["engraved", "embossed"]
+//stamp_mode  = "engraved"; // ["engraved", "embossed"]
+stamp_mode  = "embossed"; // ["engraved", "embossed"]
+
+// Text stamping (optional)
+use_text    = false;       // Enable/disable text stamping
 text_line1  = "FINE GOLD";
 text_line2  = "999.9";
 text_line3  = "1000g";
 font_size   = 7;
-stamp_depth = 1.0;
+stamp_depth = 10.0;
+
+// Bitmap stamping (optional)
+use_bitmap  = true;      // Enable/disable bitmap stamping
+bitmap_file = "stamp.png"; // Image file path (PNG, JPG, etc.)
+bitmap_width = 640;       // Image width in pixels
+bitmap_height = 320;      // Image height in pixels
+bitmap_scale = 0.8;       // Scale factor relative to top surface (0.0-1.0)
+// Height scale: 255 (max greyscale) maps to face_depth
+bitmap_extrude_depth = stamp_depth / 255;
 
 /* [Quality] */
 $fn = 60; // Increase for smoother curves (takes longer to render)
@@ -64,15 +77,35 @@ module bar_body() {
     }
 }
 
-// Generates the text object
+// Generates the text object (optional)
 module text_stamp() {
-    linear_extrude(height = stamp_depth + 0.05) {
-        translate([0, 10, 0])
-            text(text_line1, size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
-        translate([0, 0, 0])
-            text(text_line2, size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
-        translate([0, -10, 0])
-            text(text_line3, size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
+    if (use_text) {
+        linear_extrude(height = stamp_depth + 0.05) {
+            translate([0, 10, 0])
+                text(text_line1, size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
+            translate([0, 0, 0])
+                text(text_line2, size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
+            translate([0, -10, 0])
+                text(text_line3, size = font_size, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
+        }
+    }
+}
+
+// Generates the bitmap stamp (optional)
+module bitmap_stamp() {
+    if (use_bitmap) {
+        // Calculate the stamp area based on bitmap_scale
+        stamp_l = top_length * bitmap_scale;
+        stamp_w = top_width * bitmap_scale;
+        
+        // Scale factor to fit image onto the stamp area
+        scale_xy = stamp_l / bitmap_width;
+        
+        scale([scale_xy, scale_xy, bitmap_extrude_depth])
+            surface(
+                file = bitmap_file,
+                center = true
+            );
     }
 }
 
@@ -85,11 +118,17 @@ if (stamp_mode == "engraved") {
         bar_body();
         translate([0, 0, height - stamp_depth])
             text_stamp();
+        translate([0, 0, height])
+            bitmap_stamp();
     }
-} else {
-    union() {
+} else { // embossed
+    difference() {
         bar_body();
-        translate([0, 0, height - 0.01])
-            text_stamp();
+//        translate([0, 0, height - 0.01])
+//            text_stamp();
+        translate([0, 0, height + bitmap_extrude_depth + 0.01])
+            rotate([180,0,0])
+            mirror([1,0,0])
+            bitmap_stamp();
     }
 }
