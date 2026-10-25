@@ -27,3 +27,12 @@ https://www.google.com/search?q=latim+motto+for+shadow+of+brimtone&oq=latim+mott
 https://gemini.google.com/app/8887eb29b2ad319a
 
 
+# Log 
+
+##  2026/10/25
+
+gold bar, gold ingot, gold coin
+ll of them generaes a huge file, and runned simplify.py script to shrink it down a little bit.
+
+
+

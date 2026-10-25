@@ -3,12 +3,12 @@
 // ============================================
 
 /* [Bar Dimensions (mm)] */
-base_length = 30;
+base_length = 20;
 base_width  = 10;
 top_length  = base_length;
 top_width   = base_width;
 height      = 3;
-edge_radius = 2; // Controls the roundness of all edges (top, bottom, and sides)
+edge_radius = 1; // Controls the roundness of all edges (top, bottom, and sides)
 
 /* [Stamp Settings] */
 //stamp_mode  = "engraved"; // ["engraved", "embossed"]
@@ -16,15 +16,15 @@ stamp_mode  = "embossed"; // ["engraved", "embossed"]
 
 // Text stamping (optional)
 use_text    = false;       // Enable/disable text stamping
-text_line1  = "FINE GOLD";
-text_line2  = "999.9";
-text_line3  = "1000g";
+text_line1  = "BANK OF BRIMSTONE";
+text_line2  = "";
+text_line3  = "99.9 FINE GOLD";
 font_size   = 7;
-stamp_depth = 10.0;
+stamp_depth = 3.0;
 
 // Bitmap stamping (optional)
 use_bitmap  = true;      // Enable/disable bitmap stamping
-bitmap_file = "stamp.png"; // Image file path (PNG, JPG, etc.)
+bitmap_file = "BoB Fine Gold.png"; // Image file path (PNG, JPG, etc.)
 bitmap_width = 640;       // Image width in pixels
 bitmap_height = 320;      // Image height in pixels
 bitmap_scale = 0.5;       // Scale factor relative to top surface (0.0-1.0)
@@ -36,10 +36,14 @@ $fn = 60; // Increase for smoother curves (takes longer to render)
 
 /* [Edge Rounding Control] */
 // Apply a smooth round transition to the top edges?
-round_top = true; 
-// Apply a smooth round transition to the bottom edges? 
+round_top = true;
+// Apply a smooth round transition to the bottom edges?
 // (Tip: false is usually better for 3D printing so it sits flat on the bed)
-round_bottom = false; 
+round_bottom = true;
+// Apply middle sphere instead of corner spheres on left side?
+round_left = true;
+// Apply middle sphere instead of corner spheres on right side?
+round_right = false;
 
 // ============================================
 // MODULES
@@ -59,15 +63,45 @@ module place_corner_shape(x, y, z, r, is_rounded) {
 }
 
 // Helper module to place either spheres or flat discs at the 4 corners
-module place_corners(l, w, z, r, is_rounded) {
-    // Corner A: +x, +y
-    place_corner_shape(l/2 - r, w/2 - r, z, r, is_rounded);
-    // Corner B: -x, +y
-    place_corner_shape(-(l/2 - r), w/2 - r, z, r, is_rounded);
-    // Corner C: -x, -y
-    place_corner_shape(-(l/2 - r), -(w/2 - r), z, r, is_rounded);
-    // Corner D: +x, -y
-    place_corner_shape(l/2 - r, -(w/2 - r), z, r, is_rounded);
+module place_corners(l, w, z, r, is_rounded, left_rounded = false, right_rounded = false) {
+    // Corner A: +x, +y (right side)
+    if (!right_rounded) {
+        place_corner_shape(l/2 - r, w/2 - r, z, r, is_rounded);
+    }
+    // Corner B: -x, +y (left side)
+    if (!left_rounded) {
+        place_corner_shape(-(l/2 - r), w/2 - r, z, r, is_rounded);
+    }
+    // Corner C: -x, -y (left side)
+    if (!left_rounded) {
+        place_corner_shape(-(l/2 - r), -(w/2 - r), z, r, is_rounded);
+    }
+    // Corner D: +x, -y (right side)
+    if (!right_rounded) {
+        place_corner_shape(l/2 - r, -(w/2 - r), z, r, is_rounded);
+    }
+
+    // Middle spheres for left/right sides
+    // Radius in X/Y = width, Height = edge_radius
+    // Positioned at x=0 (middle of bar), y = ±(w/2 - r)
+    middle_radius = w/2;
+    middle_height = r;
+
+    if (left_rounded) {
+        // Left side middle sphere at +y
+        translate([-(l/2 - r), 0, z]) {
+            scale([1, 1, middle_height / middle_radius])
+                sphere(r = middle_radius);
+        }
+    }
+
+    if (right_rounded) {
+        // Right side middle sphere at +y
+        translate([l/2 - r, 0, z]) {
+            scale([1, 1, middle_height / middle_radius])
+                sphere(r = middle_radius);
+        }
+    }
 }
 
 // Generates the main bar based on rounding preferences
@@ -76,12 +110,12 @@ module bar_body() {
         // Bottom corners
         // If rounded, shift up by edge_radius. If flat, sit exactly at z=0.
         z_bottom = round_bottom ? edge_radius : 0;
-        place_corners(base_length, base_width, z_bottom, edge_radius, round_bottom);
-        
+        place_corners(base_length, base_width, z_bottom, edge_radius, round_bottom, round_left, round_right);
+
         // Top corners
         // If rounded, shift down by edge_radius. If flat, sit exactly at z=height.
         z_top = round_top ? height - edge_radius : height;
-        place_corners(top_length, top_width, z_top, edge_radius, round_top);
+        place_corners(top_length, top_width, z_top, edge_radius, round_top, round_left, round_right);
     }
 }
 
