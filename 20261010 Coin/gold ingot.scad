@@ -45,21 +45,29 @@ round_bottom = false;
 // MODULES
 // ============================================
 
-// Helper module to place either spheres or flat discs at the 4 corners
-module place_corners(l, w, z, r, is_rounded) {
-    for (x = [1, -1]) {
-        for (y = [1, -1]) {
-            translate([x * (l/2 - r), y * (w/2 - r), z]) {
-                if (is_rounded) {
-                    sphere(r = r);
-                } else {
-                    // A microscopic cylinder creates a perfectly flat, sharp top/bottom edge
-                    // while maintaining the rounded vertical side-corners.
-                    cylinder(r = r, h = 0.01, center = true);
-                }
-            }
+// Helper module to place a single corner shape (sphere or cylinder)
+module place_corner_shape(x, y, z, r, is_rounded) {
+    translate([x, y, z]) {
+        if (is_rounded) {
+            sphere(r = r);
+        } else {
+            // A microscopic cylinder creates a perfectly flat, sharp top/bottom edge
+            // while maintaining the rounded vertical side-corners.
+            cylinder(r = r, h = 0.01, center = true);
         }
     }
+}
+
+// Helper module to place either spheres or flat discs at the 4 corners
+module place_corners(l, w, z, r, is_rounded) {
+    // Corner A: +x, +y
+    place_corner_shape(l/2 - r, w/2 - r, z, r, is_rounded);
+    // Corner B: -x, +y
+    place_corner_shape(-(l/2 - r), w/2 - r, z, r, is_rounded);
+    // Corner C: -x, -y
+    place_corner_shape(-(l/2 - r), -(w/2 - r), z, r, is_rounded);
+    // Corner D: +x, -y
+    place_corner_shape(l/2 - r, -(w/2 - r), z, r, is_rounded);
 }
 
 // Generates the main bar based on rounding preferences
